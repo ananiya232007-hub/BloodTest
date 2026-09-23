@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+{% block content %}
+
+<div class="hero">
+    <h1 data-key="hero_title">Blood Test Report Analysis Using AI</h1>
+    <p data-key="hero_sub">Upload your blood report. AI reads values, detects abnormalities, and gives you easy-to-understand health advice.</p>
+    <a href="/dashboard" class="btn" data-key="get_started">Get Started →</a>
+</div>
+
+<div class="features">
+    <div class="card">
+        <h3 data-key="feat_ocr_title">📄 OCR Scanner</h3>
+        <p data-key="feat_ocr_desc">Reads PDF & images automatically.</p>
+    </div>
+    <div class="card">
+        <h3 data-key="feat_ai_title">🧠 AI Analysis</h3>
+        <p data-key="feat_ai_desc">Compares values with normal ranges.</p>
+    </div>
+    <div class="card">
+        <h3 data-key="feat_score_title">📊 Health Score</h3>
+        <p data-key="feat_score_desc">0–100 score with risk level.</p>
+    </div>
+    <div class="card">
+        <h3 data-key="feat_voice_title">🔊 Voice Assistant</h3>
+        <p data-key="feat_voice_desc">Speaks your report in your language.</p>
+    </div>
+    <div class="card">
+        <h3 data-key="feat_food_title">🍎 Food Advice</h3>
+        <p data-key="feat_food_desc">Personalized food recommendations.</p>
+    </div>
+    <div class="card">
+        <h3 data-key="feat_risk_title">📈 Risk Prediction</h3>
+        <p data-key="feat_risk_desc">Future health risk analysis.</p>
+    </div>
+</div>
+
+{% endblock %}

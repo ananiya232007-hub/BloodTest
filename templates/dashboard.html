@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="box" style="max-width:500px;">
+    <h2 data-key="upload_title">Upload Blood Report</h2>
+    <p style="text-align:center; margin-bottom:20px;" data-key="upload_sub">Supported: PDF, JPG, PNG</p>
+    <form action="/upload" method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="lang" id="langInput" value="en">
+        <label class="upload-box">
+            <span data-key="upload_click">📤 Click to upload or drag file here</span>
+            <input type="file" name="report" accept=".pdf,.jpg,.jpeg,.png" required>
+        </label>
+        <button class="btn" type="submit" style="width:100%;" data-key="analyze_btn">Analyze Report</button>
+    </form>
+</div>
+
+{% endblock %}

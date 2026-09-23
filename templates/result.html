@@ -1,0 +1,670 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2 style="color:#f8fafc; margin-bottom:24px; text-align:center; font-size:30px; font-weight:800; letter-spacing:-0.03em;" data-key="result_title">Analysis Result</h2>
+
+{% if emergency %}
+<div class="emergency-alert">
+    <div class="alert-icon">🚨</div>
+    <div>
+        <strong>{{ emergency }}</strong>
+    </div>
+</div>
+{% endif %}
+
+<!-- SCORE CARD -->
+<div class="score-card">
+    <h3 data-key="score_label">Health Score</h3>
+    <div class="score-meter">
+        <svg viewBox="0 0 200 200" class="circle-svg">
+            <circle cx="100" cy="100" r="85" class="circle-bg"/>
+            <circle cx="100" cy="100" r="85" class="circle-progress"
+                    style="stroke-dasharray: 534;
+                           stroke-dashoffset: {{ 534 - (534 * score.score / 100) }};
+                           stroke: {% if score.score >= 90 %}#10b981{% elif score.score >= 70 %}#06b6d4{% elif score.score >= 50 %}#f59e0b{% else %}#ef4444{% endif %};"/>
+        </svg>
+        <div class="score-text">
+            <div class="score">{{ score.score }}%</div>
+        </div>
+    </div>
+    <span class="level-badge level-{{ score.level|lower|replace(' ', '-') }}">{{ score.level }}</span>
+</div>
+
+<!-- BAR CHART -->
+<div class="chart-container">
+    <canvas id="healthChart"></canvas>
+</div>
+
+<!-- AI DOCTOR SUMMARY -->
+<div class="doctor-card">
+    <div class="doctor-header">
+        <span class="doctor-avatar">👨‍⚕️</span>
+        <div>
+            <strong data-key="doctor_title">AI Doctor Summary</strong>
+            <p style="font-size:12px; color:#64748b; margin-top:3px;">Simplified health analysis</p>
+        </div>
+    </div>
+    <div class="doctor-body">
+        <div class="doctor-row">
+            <span class="doctor-label" data-key="doc_condition">🩺 Condition:</span>
+            <span class="doctor-value">{{ summary.condition }}</span>
+        </div>
+        <div class="doctor-row">
+            <span class="doctor-label" data-key="doc_symptoms">😣 Possible Symptoms:</span>
+            <span class="doctor-value">{{ summary.symptoms|join(', ') }}</span>
+        </div>
+        <div class="doctor-row">
+            <span class="doctor-label" data-key="doc_recommendation">💊 Recommendation:</span>
+            <span class="doctor-value">{{ summary.recommendation }}</span>
+        </div>
+    </div>
+</div>
+
+<!-- EASY EXPLANATION -->
+<div class="simple-explain">
+    <h3>💡 <span data-key="simple_header">Easy Explanation</span></h3>
+    {% if analysis %}
+        {% for item in analysis %}
+        <div class="simple-item">
+            <span class="simple-icon">
+                {% if item.status == "Normal" %}✅
+                {% elif item.status == "Low" %}⬇️
+                {% else %}⬆️{% endif %}
+            </span>
+            <div>
+                <strong>{{ item.parameter }}</strong>:
+                {% if item.status == "Normal" %}
+                    <b style="color:#34d399;">{{ item.status }}</b>
+                {% elif item.status == "Low" %}
+                    <b style="color:#f87171;">{{ item.status }}</b> — {{ item.advice }}
+                {% else %}
+                    <b style="color:#fbbf24;">{{ item.status }}</b> — {{ item.advice }}
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p style="color:#94a3b8; text-align:center; padding:15px;">No data available.</p>
+    {% endif %}
+</div>
+
+<!-- FUTURE RISK -->
+<div class="risk-section">
+    <h3>📈 <span data-key="risk_header">Future Health Risk Prediction</span></h3>
+    <div class="risk-grid">
+        {% if risks %}
+            {% for r in risks %}
+            <div class="risk-card risk-{{ r.level|lower }}">
+                <div class="risk-dot"></div>
+                <div>
+                    <strong>{{ r.name }}</strong>
+                    <p>{{ r.level }}</p>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p style="color:#94a3b8;">No risks detected.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- FOOD -->
+<div class="food-section">
+    <h3>🍎 <span data-key="food_header">Food Recommendations</span></h3>
+    {% if foods %}
+        {% for f in foods %}
+        <div class="food-block">
+            <strong>{{ f.nutrient }}:</strong>
+            <div class="food-items">
+                {% for item in f.foods %}
+                <span class="food-chip">{{ item }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p style="color:#94a3b8;">No food suggestions.</p>
+    {% endif %}
+</div>
+
+<!-- BLOOD PARAMETERS TABLE -->
+<h3 data-key="param_header" style="color:#f8fafc; margin-top:32px; font-size:20px; font-weight:800;">Blood Parameters</h3>
+{% if analysis %}
+<table>
+    <tr>
+        <th>Parameter</th><th>Value</th><th>Normal</th><th>Status</th>
+    </tr>
+    {% for item in analysis %}
+    <tr>
+        <td><b>{{ item.parameter }}</b></td>
+        <td>{{ item.value }}</td>
+        <td>{{ item.normal_range }}</td>
+        <td class="status-{{ item.status|lower }}">{{ item.status }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% else %}
+    <p style="color:#94a3b8; text-align:center; padding:20px;">
+        ⚠️ No blood parameters were extracted from the uploaded report.<br>
+        Please upload a valid CBC (Complete Blood Count) report.
+    </p>
+{% endif %}
+
+<p class="disclaimer" data-key="disclaimer">⚠️ This is AI-assisted only. Consult a real doctor.</p>
+
+<div style="display:flex; gap:12px; margin-top:24px; flex-wrap:wrap;">
+    <a href="/dashboard" class="btn" data-key="analyze_another">Analyze Another</a>
+    <button onclick="speakReport()" class="btn" style="background:linear-gradient(135deg,#8b5cf6,#ec4899);">🔊 Speak</button>
+    <button onclick="window.print()" class="btn" style="background:linear-gradient(135deg,#10b981,#06b6d4);">📄 PDF</button>
+</div>
+
+<!-- CHATBOT -->
+<button class="chat-toggle" onclick="toggleChat()">💬</button>
+<div class="chat-window" id="chatWindow">
+    <div class="chat-header">
+        <span>🤖 <span data-key="chat_title">AI Health Assistant</span></span>
+        <button onclick="toggleChat()">✕</button>
+    </div>
+    <div class="chat-body" id="chatBody">
+        <div class="chat-msg bot" data-key="chat_welcome">Hi! Ask me about your report...</div>
+    </div>
+    <div class="chat-input-area">
+        <input type="text" id="chatInput" data-placeholder-key="chat_placeholder" placeholder="Ask about your report..." onkeypress="if(event.key==='Enter') sendChat()">
+        <button onclick="startVoiceInput()" id="voiceBtn" title="Speak">🎤</button>
+        <button onclick="sendChat()">➤</button>
+    </div>
+    <div style="padding:10px 14px; border-top:1px solid rgba(99,102,241,0.15); background:rgba(11,17,32,0.9); display:flex; align-items:center; gap:8px; font-size:12px;">
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer; color:#cbd5e1;">
+            <input type="checkbox" id="voiceReplyToggle" checked style="cursor:pointer; accent-color:#3b82f6;">
+            🔊 <span>Voice reply</span>
+        </label>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- BAR CHART -->
+<!-- ============================================================ -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const canvas = document.getElementById('healthChart');
+    if (!canvas) return;
+
+    const labels = [{% for item in analysis %}"{{ item.parameter }}",{% endfor %}];
+    const values = [{% for item in analysis %}{{ item.value }},{% endfor %}];
+    const statuses = [{% for item in analysis %}"{{ item.status }}",{% endfor %}];
+
+    const colors = statuses.map(s => {
+        if (s === 'Normal') return 'rgba(16, 185, 129, 0.75)';
+        if (s === 'Low') return 'rgba(239, 68, 68, 0.75)';
+        return 'rgba(245, 158, 11, 0.75)';
+    });
+
+    const borders = statuses.map(s => {
+        if (s === 'Normal') return '#10b981';
+        if (s === 'Low') return '#ef4444';
+        return '#f59e0b';
+    });
+
+    new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Your Value',
+                data: values,
+                backgroundColor: colors,
+                borderColor: borders,
+                borderWidth: 2,
+                borderRadius: 10,
+                borderSkipped: false,
+                barThickness: 42
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { display: false },
+                title: {
+                    display: true,
+                    text: 'Blood Parameters — Your Values',
+                    color: '#f8fafc',
+                    font: { size: 16, family: 'Inter', weight: '700' },
+                    padding: { bottom: 20 }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    titleColor: '#06b6d4',
+                    bodyColor: '#e2e8f0',
+                    borderColor: 'rgba(99, 102, 241, 0.4)',
+                    borderWidth: 1,
+                    padding: 12,
+                    titleFont: { size: 13, family: 'Inter', weight: '700' },
+                    bodyFont: { size: 12, family: 'Inter' }
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(99, 102, 241, 0.08)', drawBorder: false },
+                    ticks: { color: '#94a3b8', font: { size: 12, family: 'Inter' } }
+                },
+                y: {
+                    grid: { display: false, drawBorder: false },
+                    ticks: { color: '#e2e8f0', font: { size: 13, family: 'Inter', weight: '600' } }
+                }
+            },
+            animation: { duration: 1500, easing: 'easeOutQuart' }
+        }
+    });
+
+    // Reveal animations
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) entry.target.classList.add('revealed');
+        });
+    }, { threshold: 0.1 });
+
+    document.querySelectorAll('.card, .simple-item, .rec-card, .food-block, .risk-card, .doctor-card')
+        .forEach(el => observer.observe(el));
+});
+</script>
+
+<!-- ============================================================ -->
+<!-- SPEAK REPORT -->
+<!-- ============================================================ -->
+<script>
+function speakReport() {
+    const lang = localStorage.getItem('lang') || 'en';
+    const score = document.querySelector('.score')?.textContent || '0%';
+    const doctorValues = document.querySelectorAll('.doctor-value');
+    const condition = doctorValues[0]?.textContent?.trim() || '';
+    const symptoms = doctorValues[1]?.textContent?.trim() || '';
+    const recommendation = doctorValues[2]?.textContent?.trim() || '';
+
+    let text = '';
+    let voiceLang = 'en-US';
+
+    if (lang === 'ta') {
+        text = `உங்கள் இரத்த அறிக்கை பரிசோதனை முடிவு. ஆரோக்கிய மதிப்பெண் ${score}. நிலை ${condition}. சாத்தியமான அறிகுறிகள் ${symptoms}. பரிந்துரை ${recommendation}. இது AI உதவி மட்டுமே. மருத்துவரை அணுகவும்.`;
+        voiceLang = 'ta-IN';
+    } else if (lang === 'hi') {
+        text = `आपकी रक्त रिपोर्ट का विश्लेषण पूरा हुआ। स्वास्थ्य स्कोर ${score}. स्थिति ${condition}. संभावित लक्षण ${symptoms}. सिफारिश ${recommendation}. कृपया डॉक्टर से मिलें।`;
+        voiceLang = 'hi-IN';
+    } else if (lang === 'ml' || lang === 'kn') {
+        text = `Your blood report analysis is complete. Health score ${score}. Condition ${condition}. Possible symptoms ${symptoms}. Recommendation ${recommendation}. Please consult a doctor.`;
+        voiceLang = 'en-IN';
+    } else {
+        text = `Your blood report analysis is complete. Health score ${score}. Condition ${condition}. Possible symptoms ${symptoms}. Recommendation ${recommendation}. This is AI assistance only. Please consult a doctor.`;
+        voiceLang = 'en-US';
+    }
+
+    text = text.replace(/\s+/g, ' ').trim();
+
+    if ('speechSynthesis' in window) {
+        speechSynthesis.cancel();
+        setTimeout(() => {
+            const u = new SpeechSynthesisUtterance(text);
+            u.lang = voiceLang;
+            u.rate = 0.9;
+            u.pitch = 1;
+            u.volume = 1;
+
+            const voices = speechSynthesis.getVoices();
+            const matchVoice = voices.find(v => v.lang === voiceLang)
+                            || voices.find(v => v.lang.startsWith(voiceLang.split('-')[0]));
+            if (matchVoice) u.voice = matchVoice;
+
+            speechSynthesis.speak(u);
+        }, 100);
+    } else {
+        alert("Your browser doesn't support voice output.");
+    }
+}
+</script>
+
+<!-- ============================================================ -->
+<!-- CHATBOT -->
+<!-- ============================================================ -->
+<script>
+function speakBotReply(text) {
+    const lang = localStorage.getItem('lang') || 'en';
+    const langMap = {
+        'en': 'en-US', 'ta': 'ta-IN', 'hi': 'hi-IN',
+        'ml': 'en-IN', 'kn': 'en-IN'
+    };
+    const voiceLang = langMap[lang] || 'en-US';
+
+    if (!('speechSynthesis' in window)) return;
+
+    speechSynthesis.cancel();
+    setTimeout(() => {
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = voiceLang;
+        u.rate = 0.9;
+        u.pitch = 1;
+        u.volume = 1;
+
+        const voices = speechSynthesis.getVoices();
+        const matchVoice = voices.find(v => v.lang === voiceLang)
+                        || voices.find(v => v.lang.startsWith(voiceLang.split('-')[0]));
+        if (matchVoice) u.voice = matchVoice;
+
+        speechSynthesis.speak(u);
+    }, 100);
+}
+
+function sendChat() {
+    const input = document.getElementById('chatInput');
+    const body = document.getElementById('chatBody');
+    if (!input || !body) return;
+    const msg = input.value.trim();
+    if (!msg) return;
+
+    const userDiv = document.createElement('div');
+    userDiv.className = 'chat-msg user';
+    userDiv.textContent = msg;
+    body.appendChild(userDiv);
+    input.value = '';
+
+    const typing = document.createElement('div');
+    typing.className = 'chat-msg bot';
+    typing.textContent = '...';
+    typing.id = 'typingIndicator';
+    body.appendChild(typing);
+    body.scrollTop = body.scrollHeight;
+
+    setTimeout(() => {
+        const typingEl = document.getElementById('typingIndicator');
+        if (typingEl) body.removeChild(typingEl);
+
+        const reply = getBotReply(msg.toLowerCase());
+
+        const botDiv = document.createElement('div');
+        botDiv.className = 'chat-msg bot';
+        botDiv.textContent = reply;
+        body.appendChild(botDiv);
+        body.scrollTop = body.scrollHeight;
+
+        const voiceToggle = document.getElementById('voiceReplyToggle');
+        if (voiceToggle && voiceToggle.checked) {
+            speakBotReply(reply);
+        }
+    }, 600);
+
+    body.scrollTop = body.scrollHeight;
+}
+
+function startVoiceInput() {
+    const voiceBtn = document.getElementById('voiceBtn');
+
+    if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+        alert('Voice input is not supported. Please use Chrome or Edge.');
+        return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+
+    const lang = localStorage.getItem('lang') || 'en';
+    const langMap = {
+        'en': 'en-US', 'ta': 'ta-IN', 'hi': 'hi-IN',
+        'ml': 'ml-IN', 'kn': 'kn-IN'
+    };
+
+    recognition.lang = langMap[lang] || 'en-US';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    if (voiceBtn) {
+        voiceBtn.style.background = 'linear-gradient(135deg, #ef4444, #ec4899)';
+        voiceBtn.textContent = '🔴';
+        voiceBtn.disabled = true;
+    }
+
+    recognition.start();
+
+    recognition.onresult = function(event) {
+        const transcript = event.results[0][0].transcript;
+        document.getElementById('chatInput').value = transcript;
+        sendChat();
+    };
+
+    recognition.onerror = function(event) {
+        if (event.error === 'not-allowed') {
+            alert('Microphone access denied. Please allow microphone in browser settings.');
+        } else if (event.error === 'no-speech') {
+            alert('No speech detected. Please try again.');
+        }
+    };
+
+    recognition.onend = function() {
+        if (voiceBtn) {
+            voiceBtn.style.background = 'linear-gradient(135deg, #3b82f6, #8b5cf6)';
+            voiceBtn.textContent = '🎤';
+            voiceBtn.disabled = false;
+        }
+    };
+}
+</script>
+
+<!-- ============================================================ -->
+<!-- TRANSLATE BACKEND CONTENT -->
+<!-- ============================================================ -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(function() {
+        const lang = localStorage.getItem('lang') || 'en';
+        if (lang === 'en') return;
+
+        const dict = {
+            'ta': {
+                '✅ Healthy': '✅ ஆரோக்கியம்', 'Healthy': 'ஆரோக்கியம்',
+                'Mild Anemia': 'இரத்த சோகை', 'Possible Infection': 'சாத்தியமான தொற்று',
+                'Low Platelets': 'குறைந்த பிளேட்லெட்', 'High Sugar': 'அதிக சர்க்கரை',
+                'No symptoms detected': 'அறிகுறிகள் இல்லை',
+                'Keep up your healthy lifestyle!': 'உங்கள் ஆரோக்கியமான வாழ்க்கை முறையை தொடரவும்!',
+                'Balanced diet': 'சமச்சீர் உணவு', 'Iron-rich foods': 'இரும்புச்சத்து உணவுகள்',
+                'Platelet boosters': 'பிளேட்லெட் அதிகரிக்கும் உணவுகள்',
+                'Low-sugar foods': 'குறைந்த சர்க்கரை உணவுகள்',
+                'Immunity support': 'நோய் எதிர்ப்பு சக்தி',
+                'Vegetables': 'காய்கறிகள்', 'Fruits': 'பழங்கள்', 'Water': 'தண்ணீர்',
+                'Exercise daily': 'தினமும் உடற்பயிற்சி',
+                'Spinach': 'கீரை', 'Pomegranate': 'மாதுளை', 'Dates': 'பேரிச்சம்பழம்',
+                'Beetroot': 'பீட்ரூட்', 'Red meat': 'சிவப்பு இறைச்சி', 'Lentils': 'பருப்பு',
+                'Papaya': 'பப்பாளி', 'Coconut water': 'இளநீர்',
+                'Green leafy veggies': 'கீரை வகைகள்', 'Pumpkin': 'பூசணி',
+                'Bitter gourd': 'பாகற்காய்', 'Whole grains': 'முழு தானியங்கள்',
+                'Broccoli': 'ப்ரோக்கோலி', 'Nuts': 'கொட்டைகள்',
+                'Citrus fruits': 'சிட்ரஸ் பழங்கள்', 'Garlic': 'பூண்டு',
+                'Ginger': 'இஞ்சி', 'Green tea': 'பச்சை தேநீர்',
+                'Overall Health': 'ஒட்டுமொத்த ஆரோக்கியம்',
+                'Low': 'குறைவு', 'Moderate': 'மிதமான', 'High': 'அதிகம்',
+                'Anemia Risk': 'இரத்த சோகை ஆபத்து', 'Infection Risk': 'தொற்று ஆபத்து',
+                'Bleeding Risk': 'இரத்தப்போக்கு ஆபத்து', 'Diabetes Risk': 'நீரிழிவு ஆபத்து'
+            },
+            'hi': {
+                '✅ Healthy': '✅ स्वस्थ', 'Healthy': 'स्वस्थ',
+                'Mild Anemia': 'हल्का एनीमिया', 'Possible Infection': 'संभावित संक्रमण',
+                'Low Platelets': 'कम प्लेटलेट्स', 'High Sugar': 'उच्च शर्करा',
+                'No symptoms detected': 'कोई लक्षण नहीं',
+                'Keep up your healthy lifestyle!': 'अपनी स्वस्थ जीवनशैली जारी रखें!',
+                'Balanced diet': 'संतुलित आहार', 'Iron-rich foods': 'आयरन युक्त खाद्य',
+                'Platelet boosters': 'प्लेटलेट बढ़ाने वाले', 'Low-sugar foods': 'कम शर्करा वाले',
+                'Immunity support': 'प्रतिरक्षा समर्थन',
+                'Vegetables': 'सब्जियां', 'Fruits': 'फल', 'Water': 'पानी',
+                'Exercise daily': 'रोज़ व्यायाम', 'Spinach': 'पालक', 'Pomegranate': 'अनार',
+                'Dates': 'खजूर', 'Beetroot': 'चुकंदर', 'Red meat': 'लाल मांस', 'Lentils': 'दालें',
+                'Papaya': 'पपीता', 'Coconut water': 'नारियल पानी',
+                'Green leafy veggies': 'हरी सब्जियां', 'Pumpkin': 'कद्दू',
+                'Bitter gourd': 'करेला', 'Whole grains': 'साबुत अनाज',
+                'Broccoli': 'ब्रोकली', 'Nuts': 'मेवे', 'Citrus fruits': 'खट्टे फल',
+                'Garlic': 'लहसुन', 'Ginger': 'अदरक', 'Green tea': 'हरी चाय',
+                'Overall Health': 'समग्र स्वास्थ्य',
+                'Low': 'कम', 'Moderate': 'मध्यम', 'High': 'उच्च',
+                'Anemia Risk': 'एनीमिया जोखिम', 'Infection Risk': 'संक्रमण जोखिम',
+                'Bleeding Risk': 'रक्तस्राव जोखिम', 'Diabetes Risk': 'मधुमेह जोखिम'
+            },
+            'ml': {
+                '✅ Healthy': '✅ ആരോഗ്യകരം', 'Healthy': 'ആരോഗ്യകരം',
+                'Mild Anemia': 'ചെറിയ വിളർച്ച', 'Possible Infection': 'സാധ്യമായ അണുബാധ',
+                'Low Platelets': 'കുറഞ്ഞ പ്ലേറ്റ്ലെറ്റുകൾ', 'High Sugar': 'ഉയർന്ന പഞ്ചസാര',
+                'No symptoms detected': 'ലക്ഷണങ്ങളില്ല',
+                'Keep up your healthy lifestyle!': 'ആരോഗ്യകരമായ ജീവിതശൈലി തുടരുക!',
+                'Balanced diet': 'സമീകൃത ഭക്ഷണം', 'Iron-rich foods': 'അയൺ സമ്പുഷ്ട ഭക്ഷണങ്ങൾ',
+                'Platelet boosters': 'പ്ലേറ്റ്ലെറ്റ് വർദ്ധിപ്പിക്കുന്നവ',
+                'Low-sugar foods': 'കുറഞ്ഞ പഞ്ചസാര ഭക്ഷണങ്ങൾ',
+                'Immunity support': 'പ്രതിരോധശേഷി',
+                'Vegetables': 'പച്ചക്കറികൾ', 'Fruits': 'പഴങ്ങൾ', 'Water': 'വെള്ളം',
+                'Exercise daily': 'ദിവസവും വ്യായാമം', 'Spinach': 'ചീര', 'Pomegranate': 'മാതളനാരങ്ങ',
+                'Dates': 'ഈന്തപ്പഴം', 'Beetroot': 'ബീറ്റ്റൂട്ട്', 'Red meat': 'ചുവന്ന മാംസം',
+                'Lentils': 'പരിപ്പ്', 'Papaya': 'പപ്പായ', 'Coconut water': 'കരിക്കിൻ വെള്ളം',
+                'Green leafy veggies': 'പച്ചിലക്കറികൾ', 'Pumpkin': 'മത്തങ്ങ',
+                'Bitter gourd': 'പാവയ്ക്ക', 'Whole grains': 'മുഴുധാന്യങ്ങൾ',
+                'Broccoli': 'ബ്രോക്കോളി', 'Nuts': 'നട്ട്സ്', 'Citrus fruits': 'നാരക പഴങ്ങൾ',
+                'Garlic': 'വെളുത്തുള്ളി', 'Ginger': 'ഇഞ്ചി', 'Green tea': 'പച്ച തേയില',
+                'Overall Health': 'മൊത്തത്തിലുള്ള ആരോഗ്യം',
+                'Low': 'കുറവ്', 'Moderate': 'മിതമായ', 'High': 'ഉയർന്നത്',
+                'Anemia Risk': 'വിളർച്ച അപകടം', 'Infection Risk': 'അണുബാധ അപകടം',
+                'Bleeding Risk': 'രക്തസ്രാവ അപകടം', 'Diabetes Risk': 'പ്രമേഹ അപകടം'
+            },
+            'kn': {
+                '✅ Healthy': '✅ ಆರೋಗ್ಯಕರ', 'Healthy': 'ಆರೋಗ್ಯಕರ',
+                'Mild Anemia': 'ಸೌಮ್ಯ ರಕ್ತಹೀನತೆ', 'Possible Infection': 'ಸಂಭಾವ್ಯ ಸೋಂಕು',
+                'Low Platelets': 'ಕಡಿಮೆ ಪ್ಲೇಟ್ಲೆಟ್', 'High Sugar': 'ಹೆಚ್ಚಿನ ಸಕ್ಕರೆ',
+                'No symptoms detected': 'ಯಾವುದೇ ಲಕ್ಷಣಗಳಿಲ್ಲ',
+                'Keep up your healthy lifestyle!': 'ಆರೋಗ್ಯಕರ ಜೀವನಶೈಲಿ ಮುಂದುವರಿಸಿ!',
+                'Balanced diet': 'ಸಮತೋಲಿತ ಆಹಾರ', 'Iron-rich foods': 'ಕಬ್ಬಿಣಯುಕ್ತ ಆಹಾರ',
+                'Platelet boosters': 'ಪ್ಲೇಟ್ಲೆಟ್ ಹೆಚ್ಚಿಸುವ ಆಹಾರ',
+                'Low-sugar foods': 'ಕಡಿಮೆ ಸಕ್ಕರೆ ಆಹಾರ',
+                'Immunity support': 'ರೋಗನಿರೋಧಕ ಶಕ್ತಿ',
+                'Vegetables': 'ತರಕಾರಿಗಳು', 'Fruits': 'ಹಣ್ಣುಗಳು', 'Water': 'ನೀರು',
+                'Exercise daily': 'ದಿನನಿತ್ಯ ವ್ಯಾಯಾಮ', 'Spinach': 'ಪಾಲಕ್',
+                'Pomegranate': 'ದಾಳಿಂಬೆ', 'Dates': 'ಖರ್ಜೂರ', 'Beetroot': 'ಬೀಟ್ರೂಟ್',
+                'Red meat': 'ಕೆಂಪು ಮಾಂಸ', 'Lentils': 'ಬೇಳೆ', 'Papaya': 'ಪಪ್ಪಾಯಿ',
+                'Coconut water': 'ಎಳನೀರು', 'Green leafy veggies': 'ಹಸಿರು ಸೊಪ್ಪು',
+                'Pumpkin': 'ಕುಂಬಳಕಾಯಿ', 'Bitter gourd': 'ಹಾಗಲಕಾಯಿ',
+                'Whole grains': 'ಇಡೀ ಧಾನ್ಯಗಳು', 'Broccoli': 'ಬ್ರೊಕೋಲಿ',
+                'Nuts': 'ಬೀಜಗಳು', 'Citrus fruits': 'ನಿಂಬೆ ಹಣ್ಣುಗಳು',
+                'Garlic': 'ಬೆಳ್ಳುಳ್ಳಿ', 'Ginger': 'ಶುಂಠಿ', 'Green tea': 'ಹಸಿರು ಚಹಾ',
+                'Overall Health': 'ಒಟ್ಟಾರೆ ಆರೋಗ್ಯ',
+                'Low': 'ಕಡಿಮೆ', 'Moderate': 'ಮಧ್ಯಮ', 'High': 'ಹೆಚ್ಚು',
+                'Anemia Risk': 'ರಕ್ತಹೀನತೆ ಅಪಾಯ', 'Infection Risk': 'ಸೋಂಕು ಅಪಾಯ',
+                'Bleeding Risk': 'ರಕ್ತಸ್ರಾವ ಅಪಾಯ', 'Diabetes Risk': 'ಮಧುಮೇಹ ಅಪಾಯ'
+            }
+        };
+
+        const langDict = dict[lang];
+        if (!langDict) return;
+
+        function translateText(text) {
+            if (!text) return text;
+            const trimmed = text.trim();
+            if (langDict[trimmed]) return text.replace(trimmed, langDict[trimmed]);
+            for (const [eng, trans] of Object.entries(langDict)) {
+                if (trimmed === eng) return trans;
+                if (trimmed.includes(eng)) text = text.replace(eng, trans);
+            }
+            return text;
+        }
+
+        document.querySelectorAll('.doctor-value').forEach(el => { el.textContent = translateText(el.textContent); });
+        document.querySelectorAll('.food-block strong').forEach(el => { el.textContent = translateText(el.textContent); });
+        document.querySelectorAll('.food-chip').forEach(el => { el.textContent = translateText(el.textContent); });
+        document.querySelectorAll('.risk-card strong').forEach(el => { el.textContent = translateText(el.textContent); });
+        document.querySelectorAll('.risk-card p').forEach(el => { el.textContent = translateText(el.textContent); });
+        document.querySelectorAll('table th').forEach(el => { const t = el.textContent.trim(); if (langDict[t]) el.textContent = langDict[t]; });
+        document.querySelectorAll('table td').forEach(el => { const t = el.textContent.trim(); if (langDict[t]) el.textContent = langDict[t]; });
+        document.querySelectorAll('.simple-item b').forEach(el => { const t = el.textContent.trim(); if (langDict[t]) el.textContent = langDict[t]; });
+    }, 100);
+});
+</script>
+
+<!-- ============================================================ -->
+<!-- TRANSLATE MEDICAL TERMS + HEADINGS + BUTTONS -->
+<!-- ============================================================ -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(function() {
+        const lang = localStorage.getItem('lang') || 'en';
+
+        const dict = {
+            'ta': {
+                'Hemoglobin': 'ஹீமோகுளோபின்', 'WBC': 'வெள்ளை அணு (WBC)',
+                'Platelets': 'பிளேட்லெட்', 'RBC': 'சிவப்பு அணு (RBC)', 'Glucose': 'குளுக்கோஸ்',
+                'Parameter': 'அளவுகள்', 'Value': 'மதிப்பு', 'Normal': 'சாதாரணம்', 'Status': 'நிலை',
+                'Speak': 'பேசு', '🔊 Speak': '🔊 பேசு',
+                'Analyze Another': 'மற்றொரு அறிக்கையை பரிசோதி',
+                '⚠️ This is AI-assisted only. Consult a real doctor.': '⚠️ இது AI உதவி மட்டுமே. துல்லியமான கண்டறிதலுக்கு மருத்துவரை அணுகவும்.'
+            },
+            'hi': {
+                'Hemoglobin': 'हीमोग्लोबिन', 'WBC': 'श्वेत रक्त कोशिका (WBC)',
+                'Platelets': 'प्लेटलेट्स', 'RBC': 'लाल रक्त कोशिका (RBC)', 'Glucose': 'ग्लूकोज',
+                'Parameter': 'पैरामीटर', 'Value': 'मान', 'Normal': 'सामान्य', 'Status': 'स्थिति',
+                'Speak': 'बोलें', '🔊 Speak': '🔊 बोलें',
+                'Analyze Another': 'दूसरी रिपोर्ट का विश्लेषण करें',
+                '⚠️ This is AI-assisted only. Consult a real doctor.': '⚠️ यह केवल AI सहायता है। असली डॉक्टर से परामर्श करें।'
+            },
+            'ml': {
+                'Hemoglobin': 'ഹീമോഗ്ലോബിൻ', 'WBC': 'വെളുത്ത രക്താണു (WBC)',
+                'Platelets': 'പ്ലേറ്റ്ലെറ്റുകൾ', 'RBC': 'ചുവന്ന രക്താണു (RBC)', 'Glucose': 'ഗ്ലൂക്കോസ്',
+                'Parameter': 'പാരാമീറ്റർ', 'Value': 'മൂല്യം', 'Normal': 'സാധാരണ', 'Status': 'നില',
+                'Speak': 'സംസാരിക്കുക', '🔊 Speak': '🔊 സംസാരിക്കുക',
+                'Analyze Another': 'മറ്റൊരു റിപ്പോർട്ട് വിശകലനം ചെയ്യുക',
+                '⚠️ This is AI-assisted only. Consult a real doctor.': '⚠️ ഇത് AI സഹായം മാത്രമാണ്. യഥാർത്ഥ ഡോക്ടറെ കാണുക.'
+            },
+            'kn': {
+                'Hemoglobin': 'ಹಿಮೋಗ್ಲೋಬಿನ್', 'WBC': 'ಬಿಳಿ ರಕ್ತ ಕಣ (WBC)',
+                'Platelets': 'ಪ್ಲೇಟ್ಲೆಟ್ಗಳು', 'RBC': 'ಕೆಂಪು ರಕ್ತ ಕಣ (RBC)', 'Glucose': 'ಗ್ಲೂಕೋಸ್',
+                'Parameter': 'ನಿಯತಾಂಕ', 'Value': 'ಮೌಲ್ಯ', 'Normal': 'ಸಾಮಾನ್ಯ', 'Status': 'ಸ್ಥಿತಿ',
+                'Speak': 'ಮಾತನಾಡಿ', '🔊 Speak': '🔊 ಮಾತನಾಡಿ',
+                'Analyze Another': 'ಇನ್ನೊಂದು ವರದಿ ವಿಶ್ಲೇಷಿಸಿ',
+                '⚠️ This is AI-assisted only. Consult a real doctor.': '⚠️ ಇದು AI ಸಹಾಯ ಮಾತ್ರ. ನಿಜವಾದ ವೈದ್ಯರನ್ನು ಸಂಪರ್ಕಿಸಿ.'
+            }
+        };
+
+        const langDict = dict[lang];
+        if (!langDict) return;
+
+        function translateText(text) {
+            if (!text) return text;
+            const trimmed = text.trim();
+            if (langDict[trimmed]) return text.replace(trimmed, langDict[trimmed]);
+            for (const [eng, trans] of Object.entries(langDict)) {
+                if (trimmed === eng) return trans;
+                if (trimmed.includes(eng)) text = text.replace(eng, trans);
+            }
+            return text;
+        }
+
+        document.querySelectorAll('table td b').forEach(el => { el.textContent = translateText(el.textContent); });
+        document.querySelectorAll('.simple-item strong').forEach(el => { el.textContent = translateText(el.textContent); });
+        document.querySelectorAll('.simple-item b').forEach(el => { const t = el.textContent.trim(); if (langDict[t]) el.textContent = langDict[t]; });
+        document.querySelectorAll('.status-normal, .status-low, .status-high').forEach(el => { const t = el.textContent.trim(); if (langDict[t]) el.textContent = langDict[t]; });
+        document.querySelectorAll('table th').forEach(el => { const t = el.textContent.trim(); if (langDict[t]) el.textContent = langDict[t]; });
+
+        document.querySelectorAll('button.btn, a.btn').forEach(el => {
+            const t = el.textContent.trim();
+            if (langDict[t]) el.textContent = langDict[t];
+            else {
+                for (const [eng, trans] of Object.entries(langDict)) {
+                    if (t.includes(eng) && eng !== t) {
+                        el.textContent = t.replace(eng, trans);
+                        break;
+                    }
+                }
+            }
+        });
+
+        const disclaimer = document.querySelector('.disclaimer');
+        if (disclaimer) {
+            const t = disclaimer.textContent.trim();
+            if (langDict[t]) disclaimer.textContent = langDict[t];
+        }
+    }, 200);
+});
+</script>
+
+{% endblock %}
